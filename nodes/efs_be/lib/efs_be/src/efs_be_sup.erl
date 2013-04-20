@@ -24,7 +24,7 @@ init([]) ->
   Port   = efs_be:get_app_env(web_port, 8001),
   LogDir = efs_be:get_app_env(log_dir, "priv/log"),
 
-  lager:info("efs be port:~p", [Port]),
+  lager:info("efs_be port:~p", [Port]),
 
   {ok, Dispatch} = file:consult( filename:join( code:priv_dir(efs_be)
                                               , "dispatch.conf")),
@@ -34,7 +34,6 @@ init([]) ->
               , {log_dir  , LogDir}
               , {dispatch , Dispatch}],
 
-  efs_be:set_bucket_props(),
   efs_be:read_mapred_js(),
 
   Child = { webmachine_mochiweb

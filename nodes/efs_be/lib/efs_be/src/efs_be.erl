@@ -13,8 +13,7 @@
 
 -export([ get_app_env/2
         , read_mapred_js/0
-        , search_enabled/0
-        , set_bucket_props/0]).
+        ]).
 
 %%%_* Includes =========================================================
 -include_lib("efs_be/include/efs_be.hrl").
@@ -58,29 +57,6 @@ read_mapred_js() ->
         application:set_env(efs_be, Atom, Content)
     end,
     Filenames).
-
-set_bucket_props() ->
-  Fun = fun(Client) ->
-            ok = wrc:set_bucket( Client
-                               , ?B_ARTICLE
-                               , [{allow_mult, true}|search_hook()]),
-            ok = wrc:set_bucket( Client
-                               , ?B_HISTORY
-                               , [{allow_mult, true}])
-        end,
-  wrc:run(Fun).
-
-search_hook() ->
-  case search_enabled() of
-    true ->
-      [{precommit, [{struct,[{<<"mod">>,<<"riak_search_kv_hook">>},
-                             {<<"fun">>,<<"precommit">>}]}]}];
-    _ ->
-      []
-  end.
-
-search_enabled() ->
-  get_app_env(search_enabled, false) == true.
 
 start_common() ->
   lists:foreach( fun(App) ->
