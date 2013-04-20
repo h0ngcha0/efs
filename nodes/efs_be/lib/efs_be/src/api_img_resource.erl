@@ -33,7 +33,13 @@ content_types_provided(ReqData, Ctx) ->
   {Map, ReqData, Ctx}.
 
 malformed_request(ReqData, Ctx) ->
-  api_resource_lib:maybe_store_val(ReqData, Ctx, [version, id]).
+  case api_resource_lib:maybe_store_val(ReqData, Ctx, [version, id]) of
+    {true, _, _} ->
+      api_resource_lib:maybe_store_val( ReqData, Ctx
+                                      , [ version, nw, ne, sw
+                                        , se, year, sample]);
+    ReturnVal    -> ReturnVal
+  end.
 
 to_json(ReqData, Ctx) ->
   Data = {array, []},

@@ -54,12 +54,8 @@ maybe_store_val(ReqData0, Ctx0, Keys) ->
     {ReqData, Ctx} = lists:foldl(F, {ReqData0, Ctx0}, Keys),
     {false, ReqData, Ctx}
   catch throw:{error, Key} = E ->
-      KeyString = case Key of
-                    {_Type, KeyAtom} -> atom_to_list(KeyAtom);
-                    KeyAtom          -> atom_to_list(KeyAtom)
-                  end,
       lager:info( "Invalid Request, ~nKey: ~p~nValue: ~p"
-                , [Key, wrq:path_info(Key, ReqData0)]),
+                , [Key, val(Key, ReqData0)]),
       {true, ReqData0, orddict:store(error, E, Ctx0)}
   end.
 
@@ -67,18 +63,22 @@ validate(Key, ReqData) ->
   case (term_to_validate(Key))(ReqData) of
     {ok, Value}  -> Value;
     {error, Rsn} ->
-      lager:debug( "API input validation failed. Key ~p, Rsn: ~p"
-                 , [Key, Rsn]),
       throw({error, Key})
   end.
 
 term_to_validate(version)   -> fun version_validate/1;
-term_to_validate(id)        -> fun id_validate/1.
+term_to_validate(id)        -> fun id_validate/1;
+term_to_validate(nw)        -> mk_cord_validate("nw");
+term_to_validate(ne)        -> mk_cord_validate("ne");
+term_to_validate(sw)        -> mk_cord_validate("sw");
+term_to_validate(se)        -> mk_cord_validate("se");
+term_to_validate(year)      -> fun year_validate/1;
+term_to_validate(sample)    -> fun sample_validate/1.
 
 version_validate(ReqData) ->
   do_version_validate(wrq:path_info(version, ReqData)).
 
-do_version_validate(undefined)  -> {ok, "V1"};
+do_version_validate(undefined)  -> {ok, default_version()};
 do_version_validate(VersionStr) ->
   try
     case lists:nth(1, VersionStr) of
@@ -95,6 +95,26 @@ do_version_validate(VersionStr) ->
 id_validate(ReqData) ->
   is_pos_int_str(wrq:path_info(id, ReqData)).
 
+year_validate(ReqData) ->
+  case wrq:get_qs_value("year", ReqData) of
+    undefined -> {ok, default_year()};
+    YearStr   -> is_pos_int_str(YearStr)
+  end.
+
+sample_validate(ReqData) ->
+  case wrq:get_qs_value("sample", ReqData) of
+    undefined -> {ok, default_sample()};
+    SampleStr   -> is_pos_int_str(SampleStr)
+  end.
+
+mk_cord_validate(Orientation) ->
+  fun(ReqData) ->
+    cord_validate(Orientation, ReqData)
+  end.
+
+cord_validate(Orientation, ReqData) ->
+  is_float_str(wrq:get_qs_value(Orientation, ReqData)).
+
 is_pos_int_str(IntStr) ->
   try
     case list_to_integer(IntStr) of
@@ -102,10 +122,38 @@ is_pos_int_str(IntStr) ->
       _                -> throw(not_pos_int)
     end
   catch
-    throw:not_pos_int -> {error, id_invalid};
-    error:badarg      -> {error, id_invalid}
+    throw:not_pos_int -> {error, not_pos_int};
+    error:badarg      -> {error, not_pos_int}
   end.
 
+is_float_str(FloatStr) ->
+  try
+    case list_to_float(FloatStr) of
+      Float -> {ok, Float};
+      _     -> throw(not_float)
+    end
+  catch
+    throw:not_float -> {error, not_float};
+    error:badarg    -> {error, not_float}
+  end.
+
+val(Key, ReqData) ->
+  case lists:member(Key, path_val()) of
+    false -> wrq:get_qs_value(atom_to_list(Key), ReqData);
+    true  -> wrq:path_info(Key, ReqData)
+  end.
+
+path_val() ->
+  [id, version].
+
+default_version() ->
+  "V1".
+
+default_year() ->
+  2013.
+
+default_sample() ->
+  100.
 %%%_* Emacs ====================================================================
 %%% Local Variables:
 %%% allout-layout: t
