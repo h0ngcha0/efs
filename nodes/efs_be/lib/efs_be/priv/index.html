@@ -1,3 +1,147 @@
-<html>
-  <h1> hello, this is efs </h1>
-</html>
+    <!DOCTYPE html>
+    <html>
+    <head>
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
+    <style type="text/css">
+    html { height: 100% }
+body { height: 100%; margin: 0; padding: 0 }
+#mapdiv { height: 100% }
+</style>
+    <script type="text/javascript"
+src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC3pdLHHOVuG7hNzauMfYwltSNXtzxOYbE&sensor=true">
+    </script>
+
+    <script type="text/javascript">
+    var mapOptions = {
+        center: new google.maps.LatLng(35, 105),
+        zoom: 5,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+var map = null;
+var pre_southwest = null;
+var pre_northeast = null;
+var overLays = new Array();
+
+function initialize() {
+    map = new google.maps.Map(document.getElementById("mapdiv"),
+                              mapOptions);
+
+    google.maps.event.addListener(map,'click',function(event) {
+        //window.alert(event.latLng.lat() + ', ' + event.latLng.lng());
+    });
+
+    google.maps.event.addListener(map,'mousedown',function(event) {
+        //save current region coordinate when mousedown event happens
+        var bounds = map.getBounds();
+        pre_southwest = bounds.getSouthWest();
+        pre_northeast = bounds.getNorthEast();
+    });
+
+    google.maps.event.addListener(map,'mouseup',function(event) {
+        var bounds = map.getBounds();
+        southwest = bounds.getSouthWest();
+        northeast = bounds.getNorthEast();
+
+        //show pictures when region is changed        
+        if(southwest.lng() != pre_southwest.lng() || southwest.lat() != pre_southwest.lat())
+        {
+            showpictures();
+        }
+    });
+};
+
+// add search bar
+function search() {
+    var addressField = document.getElementById('search_address');
+    var geocoder = new google.maps.Geocoder();
+    geocoder.geocode(
+        {'address': addressField.value}, 
+        function(results, status) { 
+            if (status == google.maps.GeocoderStatus.OK) { 
+                var loc = results[0].geometry.location;
+                map.setCenter(loc);
+
+                // show pictures
+                showpictures();
+            }
+            else {
+                alert("Not found: " + status); 
+            }
+        }
+    );
+};
+
+function showpictures() {
+    // clear overlays
+    while(overLays[0])
+    {
+        overLays.pop().SetMap(null);
+    }
+
+    // get map bounds
+    var bounds = map.getBounds();
+    var year = document.formSearch.yearSelector.value;
+
+    var kmlurl = "http://gmaps-samples.googlecode.com/svn/trunk/ggeoxml/cta.kml";
+    var georssLayer = new google.maps.KmlLayer(kmlurl);
+    georssLayer.setMap(map);
+    overLays[0] = georssLayer;
+    kmlurl = "http://api.flickr.com/services/feeds/geo/?g=322338@N20&lang=en-us&format=feed-georss";
+    var georssLayerr = new google.maps.KmlLayer(kmlurl);
+    georssLayerr.setMap(map);
+    overLays[1] = georssLayerr;
+    // google.maps.event.addListener(georssLayer, 'click', function (kmlEvent) {
+    //     alert(kmlEvent.featureData.name)
+    // });
+    // google.maps.event.addListener(georssLayer1, 'click', function (kmlEvent) {
+    //     alert(kmlEvent.featureData.name)
+    //});
+
+    
+    //combine request info and send by http url
+    var southWest = bounds.getSouthWest();
+    var northEast = bounds.getNorthEast();
+    var url = "localhost:8643/api/v1/img?se=" + southWest.lng() + "&sw=" + 
+        northEast.lng() + "&ne=" + southWest.lat() + "&nw=" + northEast.lat() + "&year=" + year;
+    
+    $.getJSON(url, function(data) {
+        $.each(data, function(key, val) {
+            var kmlurl = "";
+            var georssLayer = new google.maps.KmlLayer(kmlurl);
+            georssLayer.setMap(map);
+
+            // show picture's info when click on it
+            //google.maps.event.addListener(georssLayer, 'click', function (kmlEvent) {
+                //alert(kmlEvent.featureData.name);
+            })});
+    alert("after getjson");
+};
+
+// controls' function
+function loadYear() {
+    var newYear;
+    var selectLength = 0;
+    for(i = (new Date()).getFullYear(); i >= 1900; i--, selectLength++)
+    {
+        newOpt = new Option(i,i);
+        document.formSearch.yearSelector.options[selectLength]  = newOpt;
+    }
+};
+
+
+google.maps.event.addDomListener(window, 'load', initialize);
+</script>
+    </head>
+
+    <body onLoad="loadYear()">
+    <form name="formSearch">
+    <select name="yearSelector">
+    </select>
+    </form>
+
+    <input type="text" id="search_address" value="" onkeydown="if (event.keyCode == 13) document.getElementById('btnSearch').click()"/>
+    <button id="btnSearch" onclick="search();">Search</button>
+
+    <div id="mapdiv"/>
+    </body>
+    </Html>
