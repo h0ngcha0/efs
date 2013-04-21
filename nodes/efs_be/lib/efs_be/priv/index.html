@@ -1,121 +1,94 @@
-    <!DOCTYPE html>
-    <html>
-    <head>
-    <meta name="viewport" content="initial-scale=1.0, user-scalable=no" />
-    <style type="text/css">
-    html { height: 100% }
-body { height: 100%; margin: 0; padding: 0 }
-#mapdiv { height: 100% }
-</style>
-    <script type="text/javascript"
-src="https://maps.googleapis.com/maps/api/js?key=AIzaSyC3pdLHHOVuG7hNzauMfYwltSNXtzxOYbE&sensor=true">
-    </script>
+<head>
+<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+<!--
+Copyright 2008 Google Inc.
 
-    <script type="text/javascript">
-    var mapOptions = {
-        center: new google.maps.LatLng(35, 105),
-        zoom: 5,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-    };
-var map = null;
-var pre_southwest = null;
-var pre_northeast = null;
-var overLays = new Array();
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
 
-function initialize() {
-    map = new google.maps.Map(document.getElementById("mapdiv"),
-                              mapOptions);
+     http://www.apache.org/licenses/LICENSE-2.0
 
-    google.maps.event.addListener(map,'click',function(event) {
-        //window.alert(event.latLng.lat() + ', ' + event.latLng.lng());
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<title>Earth From Space</title>
+<!-- *** Replace the key below below with your own API key, available at http://code.google.com/apis/maps/signup.html *** -->
+  <script src="http://www.google.com/jsapi?key=ABQIAAAAwbkbZLyhsmTCWXbTcjbgbRSzHs7K5SvaUdm8ua-Xxy_-2dYwMxQMhnagaawTo7L1FE1-amhuQxIlXw"></script>
+  <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.0.0/jquery.min.js"></script>
+  <script type="text/javascript">
+google.load("earth", "1");
+google.load("maps", "2");
+
+var geMaster;
+var geocoder;
+var laMaster;
+var camMaster;
+var timeout;
+
+function fitLongitude(lon) {
+  while (lon < 0)
+    lon += 360;
+
+  lon = lon % 360;
+
+  return (lon > 180) ? lon - 360 : lon;
+}
+
+function el(e) { return document.getElementById(e); }
+function init() {
+  geocoder = new google.maps.ClientGeocoder();
+
+  // Create the earths
+  var syncActive = false;
+  google.earth.createInstance(
+    "geMaster",
+    function(object) {
+      geMaster = object;
+      geMaster.getLayerRoot().enableLayerById(geMaster.LAYER_BORDERS, true);
+      geMaster.getLayerRoot().enableLayerById(geMaster.LAYER_BUILDINGS, true);
+      geMaster.getOptions().setAtmosphereVisibility(true);
+      laMaster = geMaster.createLookAt('');
+      camMaster = geMaster.createCamera('');
+      geMaster.getWindow().setVisibility(true);
+    },
+    function(object) {
     });
 
-    google.maps.event.addListener(map,'mousedown',function(event) {
-        //save current region coordinate when mousedown event happens
-        var bounds = map.getBounds();
-        pre_southwest = bounds.getSouthWest();
-        pre_northeast = bounds.getNorthEast();
-    });
+    // load year
+    loadYear();
+}
 
-    google.maps.event.addListener(map,'mouseup',function(event) {
-        var bounds = map.getBounds();
-        southwest = bounds.getSouthWest();
-        northeast = bounds.getNorthEast();
+function submitLocation() {
+  var address = el('address').value;
+  geocoder.getLatLng(
+    address,
+    function(point) {
+      if (point && geMaster != null)
+        var la = geMaster.createLookAt('');
+        la.set(point.y, point.x, 0, geMaster.ALTITUDE_RELATIVE_TO_GROUND, 
+               100, 0, 1000000);
+        geMaster.getView().setAbstractView(la);
 
-        //show pictures when region is changed        
-        if(southwest.lng() != pre_southwest.lng() || southwest.lat() != pre_southwest.lat())
-        {
-            showpictures();
-        }
-    });
-};
-
-// add search bar
-function search() {
-    var addressField = document.getElementById('search_address');
-    var geocoder = new google.maps.Geocoder();
-    geocoder.geocode(
-        {'address': addressField.value}, 
-        function(results, status) { 
-            if (status == google.maps.GeocoderStatus.OK) { 
-                var loc = results[0].geometry.location;
-                map.setCenter(loc);
-
-                // show pictures
+        google.earth.addEventListener(geMaster.getView(), 'viewchangeend', function() {
+        //alert("viewchangeend");
+            var kmlbox = geMaster.getView().getViewportGlobeBounds();
+            //alert("north:" + kmlbox.getNorth().toFixed(8) + ";south:" + kmlbox.getSouth().toFixed(8));
+            //alert("east:" + kmlbox.getEast().toFixed(8) + ";west:" + kmlbox.getWest().toFixed(8));
+            if (timeout) {
+                clearTimeout(timeout);
+                timeout = undefined;
+            }
+            timeout = setTimeout(function() {
                 showpictures();
-            }
-            else {
-                alert("Not found: " + status); 
-            }
-        }
-    );
-};
-
-function showpictures() {
-    // clear overlays
-    while(overLays[0])
-    {
-        overLays.pop().SetMap(null);
+            }, 2000);
+        });
     }
-
-    // get map bounds
-    var bounds = map.getBounds();
-    var year = document.formSearch.yearSelector.value;
-
-    var kmlurl = "http://gmaps-samples.googlecode.com/svn/trunk/ggeoxml/cta.kml";
-    var georssLayer = new google.maps.KmlLayer(kmlurl);
-    georssLayer.setMap(map);
-    overLays[0] = georssLayer;
-    kmlurl = "http://api.flickr.com/services/feeds/geo/?g=322338@N20&lang=en-us&format=feed-georss";
-    var georssLayerr = new google.maps.KmlLayer(kmlurl);
-    georssLayerr.setMap(map);
-    overLays[1] = georssLayerr;
-    // google.maps.event.addListener(georssLayer, 'click', function (kmlEvent) {
-    //     alert(kmlEvent.featureData.name)
-    // });
-    // google.maps.event.addListener(georssLayer1, 'click', function (kmlEvent) {
-    //     alert(kmlEvent.featureData.name)
-    //});
-
-    
-    //combine request info and send by http url
-    var southWest = bounds.getSouthWest();
-    var northEast = bounds.getNorthEast();
-    var url = "localhost:8643/api/v1/img?se=" + southWest.lng() + "&sw=" + 
-        northEast.lng() + "&ne=" + southWest.lat() + "&nw=" + northEast.lat() + "&year=" + year;
-    
-    $.getJSON(url, function(data) {
-        $.each(data, function(key, val) {
-            var kmlurl = "";
-            var georssLayer = new google.maps.KmlLayer(kmlurl);
-            georssLayer.setMap(map);
-
-            // show picture's info when click on it
-            //google.maps.event.addListener(georssLayer, 'click', function (kmlEvent) {
-                //alert(kmlEvent.featureData.name);
-            })});
-    alert("after getjson");
-};
+  );
+}
 
 // controls' function
 function loadYear() {
@@ -128,20 +101,61 @@ function loadYear() {
     }
 };
 
+function showpictures() {
+    var year = document.formSearch.yearSelector.value;
+    var kmlbox = geMaster.getView().getViewportGlobeBounds();
+    var url = "http://localhost:8643/api/v1/img?se=" + kmlbox.getWest().toFixed(8) + "&sw=" + 
+        kmlbox.getEast().toFixed(8) + "&ne=" + kmlbox.getSouth().toFixed(8) + "&nw=" + kmlbox.getNorth().toFixed(8) + "&year=" + year;
 
-google.maps.event.addDomListener(window, 'load', initialize);
+    //alert(url);
+    console.log(url);
+
+    $.getJSON(url, function(data) {
+       var print = false;
+        var  i = 0;
+       $.each(data, function(key, val) {
+           if (print == false) {
+               i++;
+               console.log(val.center_lng),
+               console.log(val.center_lat),
+               console.log(val.kml_link);
+               var kmlurl = val.kml_link;
+               google.earth.fetchKml(geMaster, kmlurl, function(kmlObject) {
+                   if(kmlObject)
+                       geMaster.getFeatures().appendChild(kmlObject);
+               });
+           };
+           if (i == 10) {
+               print = true;
+           };
+       })});
+};
 </script>
-    </head>
 
-    <body onLoad="loadYear()">
-    <form name="formSearch">
-    <select name="yearSelector">
-    </select>
-    </form>
+</head>
+<body onload='init()' id='body'>
+  <table>
+    <tr>
+      <td>
+        <form action='javascript:submitLocation();void(0);'>
+          <input type=text size=40 id='address'></input>
+          <input type=submit value='Go to location'>
+        </form>
+      </td>
+      <td>&nbsp;</td>
+      <td>
+        <label> Select Year </label>
+      </td>
+      <td>
+        <form name="formSearch">
+          <select name="yearSelector">
+        </form>
+      </td>
+    </tr>
+  </table>
 
-    <input type="text" id="search_address" value="" onkeydown="if (event.keyCode == 13) document.getElementById('btnSearch').click()"/>
-    <button id="btnSearch" onclick="search();">Search</button>
-
-    <div id="mapdiv"/>
-    </body>
-    </Html>
+  <div id='geMasterContainer' style='border: 1px solid silver;'>
+    <div id='geMaster' style='height: 100%;'></div>
+  </div>
+</body>
+</html>

@@ -50,18 +50,23 @@ to_json(ReqData, Ctx) ->
 
 mk_query(ReqData) ->
   Get  = fun(KeyStr) ->
+             io:format("KeyStr:~p~n",[KeyStr]),
            list_to_float(wrq:get_qs_value(KeyStr, ReqData))
          end,
   Se   = Get("se"),
   Sw   = Get("sw"),
   Ne   = Get("ne"),
   Nw   = Get("nw"),
+  Year = case wrq:get_qs_value("year", ReqData) of
+           undefined -> 2013;
+           YearStr   -> list_to_integer(YearStr)
+         end,
   fun(Client) ->
       Results0 = wrc:mapred( Client
                            ,  ?B_IMG
                            , [make_map_spec( efs_img
                                            , efs_query
-                                           , {Se, Sw, Ne, Nw}
+                                           , {Se, Sw, Ne, Nw, Year}
                                            , true)]),
       Results = case Results0 of
                   {ok, [{_, Res}]} -> Res;

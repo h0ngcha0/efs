@@ -15,7 +15,7 @@
 %%   [1].
 efs_query({error, notfound}, _, _)  ->
   [];
-efs_query(Obj, _, {Se, Sw, Ne, Nw}) ->
+efs_query(Obj, _, {Se, Sw, Ne, Nw, Year}) ->
   Print = fun(Str) ->
               file:write_file("/tmp/query", Str, [append])
           end,
@@ -28,14 +28,18 @@ efs_query(Obj, _, {Se, Sw, Ne, Nw}) ->
     %% Print(io_lib:format("Structs:~p~n", [Structs])),
     {_, CenterLng0} = lists:keyfind(<<"center_lng">>, 1, Structs),
     {_, CenterLat0} = lists:keyfind(<<"center_lat">>, 1, Structs),
+    {_, MissionName0} = lists:keyfind(<<"mission_name">>, 1, Structs),
     %% Print(io_lib:format("CenterLng0:~p~n", [CenterLng0])),
     %% Print(io_lib:format("CenterLat0:~p~n", [CenterLat0])),
     CenterLng = list_to_float(binary_to_list(CenterLng0)),
     CenterLat = list_to_float(binary_to_list(CenterLat0)),
+    MissionName = binary_to_list(MissionName0),
+    YearIn = list_to_integer(lists:sublist(MissionName, 1, 4)),
     %% Print(io_lib:format("CenterLng:~p~n", [CenterLng])),
     %% Print(io_lib:format("CenterLat:~p~n", [CenterLat])),
     case (CenterLng > Se) andalso (CenterLng < Sw)
-      andalso (CenterLat > Ne) andalso (CenterLat < Nw) of
+      andalso (CenterLat > Ne) andalso (CenterLat < Nw)
+      andalso (Year =:= YearIn) of
       true  -> [{struct, Structs}];
       false -> []
     end
