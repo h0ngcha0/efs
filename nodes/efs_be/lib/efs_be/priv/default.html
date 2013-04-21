@@ -16,7 +16,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-<title>China Syndrome</title>
+<title>Earth From Space</title>
 <!-- *** Replace the key below below with your own API key, available at http://code.google.com/apis/maps/signup.html *** -->
   <script src="http://www.google.com/jsapi?key=ABQIAAAAwbkbZLyhsmTCWXbTcjbgbRSzHs7K5SvaUdm8ua-Xxy_-2dYwMxQMhnagaawTo7L1FE1-amhuQxIlXw"></script>
   <script type="text/javascript">
@@ -38,26 +38,6 @@ function fitLongitude(lon) {
 }
 
 function el(e) { return document.getElementById(e); }
-function syncSlave() {
-  if (geMaster && geSlave && laMaster && laSlave) {
-    if (el("china").checked) {
-      laMaster = geMaster.getView().copyAsLookAt(geMaster.ALTITUDE_RELATIVE_TO_GROUND);
-      laSlave.set(-laMaster.getLatitude(), fitLongitude(laMaster.getLongitude() + 180),
-                  laMaster.getAltitude(), laMaster.getAltitudeMode(), 
-                  laMaster.getHeading(), laMaster.getTilt(),
-                  laMaster.getRange());
-      geSlave.getView().setAbstractView(laSlave);            
-    } else if (el("eyes").checked) {
-      camMaster = geMaster.getView().copyAsCamera(geMaster.ALTITUDE_RELATIVE_TO_GROUND);
-      camSlave.set(camMaster.getLatitude(), camMaster.getLongitude(),
-                  camMaster.getAltitude(), camMaster.getAltitudeMode(), 
-                  camMaster.getHeading() + 180, camMaster.getTilt(), 
-                  camMaster.getRoll());
-      geSlave.getView().setAbstractView(camSlave);
-    }
-  }
-}
-
 function init() {
   geocoder = new google.maps.ClientGeocoder();
 
@@ -72,14 +52,12 @@ function init() {
       geMaster.getOptions().setAtmosphereVisibility(true);
       laMaster = geMaster.createLookAt('');
       camMaster = geMaster.createCamera('');
-      syncSlave();
-      if (!syncActive) {
-        google.earth.addEventListener(geMaster.getView(), 'viewchange', syncSlave);
-        syncActive = true;
-      }
       geMaster.getWindow().setVisibility(true);
     },
     function(object) {});
+
+    // load year
+    loadYear();
 }
 
 function submitLocation() {
@@ -96,6 +74,16 @@ function submitLocation() {
   );
 }
 
+// controls' function
+function loadYear() {
+    var newYear;
+    var selectLength = 0;
+    for(i = (new Date()).getFullYear(); i >= 1900; i--, selectLength++)
+    {
+        newOpt = new Option(i,i);
+        document.formSearch.yearSelector.options[selectLength]  = newOpt;
+    }
+};
 </script>
 
 </head>
@@ -110,10 +98,11 @@ function submitLocation() {
       </td>
       <td>&nbsp;</td>
       <td>
-        <form>
-          <input type="radio" id="china" name="slaveMode" onclick="syncSlave()" checked>China Syndrome</input>
-          <br />
-          <input type="radio" id="eyes" name="slaveMode" onclick="syncSlave()">Eyes in the back of your head</input>
+        <label> Select Year </label>
+      </td>
+      <td>
+        <form name="formSearch">
+          <select name="yearSelector">
         </form>
       </td>
     </tr>
