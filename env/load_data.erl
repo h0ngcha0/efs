@@ -31,14 +31,14 @@ format_and_insert(Line) ->
   FinalFieldsStrFmt = lists:foldl(fun(Field, FieldsFmt) ->
                                     FieldsFmt ++ mk_field(Field)
                                   end, [], all_fields()),
-  JSONFmt = "{"++FinalFieldsStrFmt++"\"kml_link\":\"~s\"}",
+  JSONFmt = "{"++FinalFieldsStrFmt++"\"kml_link\":~s}",
   JSON = io_lib:format(JSONFmt, Line),
   Command = io_lib:format("curl -XPUT http://127.0.0.1:10018/riak/img/~s -d '~s' -H 'content-type: application/json'", [hd(Line),JSON]),
   io:format("Inserting: ~s~n", [hd(Line)]),
   os:cmd(Command).
 
 mk_field(Field) ->
-  "\""++atom_to_list(Field)++"\""++":\"~s\",".
+  "\""++atom_to_list(Field)++"\""++":~s,".
 
 all_fields() ->
   [ image_id, center_lng, center_lat, nadir_lng, nadir_lat, corner1_lng

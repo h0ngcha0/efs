@@ -18,6 +18,7 @@
 -include_lib("webmachine/include/webmachine.hrl").
 
 %%%_* Macros ===================================================================
+-define(B_IMG, <<"img">>).
 %%%_* Records ==================================================================
 
 %%%_* Code =====================================================================
@@ -42,8 +43,39 @@ malformed_request(ReqData, Ctx) ->
   end.
 
 to_json(ReqData, Ctx) ->
-  Data = {array, []},
+  Query  = mk_query(ReqData),
+  Result = wrc:run(Query),
+  Data   = {array, Result},
   {mochijson2:encode(Data), ReqData, Ctx}.
+
+mk_query(ReqData) ->
+  Get  = fun(KeyStr) ->
+           list_to_float(wrq:get_qs_value(KeyStr, ReqData))
+         end,
+  Se   = Get("se"),
+  Sw   = Get("sw"),
+  Ne   = Get("ne"),
+  Nw   = Get("nw"),
+  fun(Client) ->
+      Results0 = wrc:mapred( Client
+                           ,  ?B_IMG
+                           , [make_map_spec( efs_img
+                                           , efs_query
+                                           , {Se, Sw, Ne, Nw}
+                                           , true)]),
+      Results = case Results0 of
+                  {ok, [{_, Res}]} -> Res;
+                  {ok, []}         -> []
+                end,
+      lager:info("fetching imgs:~p", [Results]),
+      Results
+  end.
+
+make_map_spec(Module, Func, Args, Show) ->
+  { map
+  , {modfun, Module, Func}
+  , Args
+  , Show}.
 
 %%%_* Internal Functions =======================================================
 

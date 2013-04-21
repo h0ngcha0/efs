@@ -17,7 +17,7 @@ esac
 
 usage() {
     local script=${0##/*/}
-    echo "usage: $script [init | start_backend | stop]" 1>&2
+    echo "usage: $script [init | remove_data | start | stop]" 1>&2
     exit 1
 }
 
@@ -27,15 +27,14 @@ init() {
 }
 
 build_env() {
-    if [ ! -d $env_dir ] ; then
-        mkdir $env_dir
+    if [ ! -d $riak_dir ] ; then
         cd $env_dir
         echo "cloning riak..."
         clone $riak_dir $riak_repo
         echo "compiling riak..."
         compile_riak $riak_dir
     else
-        echo $env_dir directory already created
+        echo $riak_dir directory already created
     fi
 }
 
@@ -71,7 +70,7 @@ compile_riak() {
     [ -d dev ] || $make devrel
 }
 
-start_backend() {
+start() {
     [ -d $efs_be_dir ] || exit 3
 
     start_riak
@@ -92,8 +91,12 @@ start_riak() {
     done
 
     for d in dev2 dev3; do
-        already_joined $d || ./dev/$d/bin/riak-admin cluster join dev1@127.0.0.1
+        ./dev/$d/bin/riak-admin cluster join dev1@127.0.0.1 || echo "already joined"
     done
+
+    ./dev/$d/bin/riak-admin cluster plan && sleep 3
+
+    ./dev/$d/bin/riak-admin cluster commit
 }
 
 stop() {
@@ -118,11 +121,25 @@ already_joined() {
     [ "$?" -eq "0" ]
 }
 
+# remove all the data in riak
+remove_data() {
+    [ -d $riak_dir ] || exit 3
+    cd $riak_dir
+
+    echo "WARNING: remove all the riak data..."
+
+    for d in dev1 dev2 dev3; do
+        echo "deleting data in ${PWD}/dev/${d}/data..."
+        rm -rf ${PWD}/dev/${d}/data
+    done
+}
+
 # Do the business                                                                                                                                      
 [ $# -eq 1 ] || usage
 case $1 in
     init)          init;;
-    start_backend) start_backend;;
+    remove_data)   remove_data;;
+    start)         start;;
     stop)          stop;;
     *)             usage;;
 esac
