@@ -80,29 +80,6 @@ function init() {
       geMaster.getWindow().setVisibility(true);
     },
     function(object) {});
-  google.earth.createInstance(
-    "geSlave",
-    function(object) {
-      geSlave = object;
-      geSlave.getLayerRoot().enableLayerById(geSlave.LAYER_BORDERS, true);
-      geSlave.getLayerRoot().enableLayerById(geSlave.LAYER_BUILDINGS, true);
-      geSlave.getOptions().setAtmosphereVisibility(true);
-      geSlave.getOptions().setFlyToSpeed(geSlave.SPEED_TELEPORT);
-      geSlave.getOptions().setMouseNavigationEnabled(false);
-      laSlave = geSlave.createLookAt('');
-      camSlave = geSlave.createCamera('');
-      syncSlave();
-      if (!syncActive && geMaster) {
-        google.earth.addEventListener(geMaster.getView(), 'viewchange', syncSlave);
-        syncActive = true;
-      }
-      geSlave.getWindow().setVisibility(true);
-    },
-    /***
-     * This function will be called if plugin fails to load, in case
-     * you need to handle that error condition.
-     ***/
-    function(object) {});
 }
 
 function submitLocation() {
@@ -142,19 +119,8 @@ function submitLocation() {
     </tr>
   </table>
 
-  <table>
-    <tr>
-      <td width=600>
-        <div id='geMasterContainer' style='border: 1px solid silver; height: 600px;'>
-          <div id='geMaster' style='height: 100%;'></div>
-        </div>
-      </td>
-      <td width=600>
-        <div id='geSlaveContainer' style='border: 1px solid silver; height: 600px;'>
-          <div id='geSlave' style='height: 100%;'></div>
-        </div>
-      </td>
-    </tr>
-  </table>
+  <div id='geMasterContainer' style='border: 1px solid silver;'>
+    <div id='geMaster' style='height: 100%;'></div>
+  </div>
 </body>
 </html>
